@@ -1,0 +1,168 @@
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+import { persist } from "zustand/middleware";
+import { nanoid } from "nanoid";
+import type {
+  DashboardConfig,
+  WidgetConfig,
+  WidgetLayout,
+  GridLayout,
+  WidgetType,
+} from "@/types/dashboard";
+
+interface DashboardState {
+  config: DashboardConfig | null;
+  activeWidgetId: string | null;
+  history: DashboardConfig[];
+  historyIndex: number;
+
+  setConfig: (config: DashboardConfig) => void;
+  addWidget: (
+    type: WidgetType,
+    partial?: Partial<WidgetConfig>
+  ) => string;
+  updateWidget: (id: string, patch: Partial<WidgetConfig>) => void;
+  removeWidget: (id: string) => void;
+  updateLayout: (layouts: GridLayout[]) => void;
+  setActiveWidget: (id: string | null) => void;
+  undo: () => void;
+  redo: () => void;
+  reset: () => void;
+}
+
+const MAX_HISTORY = 50;
+
+function pushHistory(
+  state: DashboardState,
+  config: DashboardConfig
+) {
+  state.history = state.history.slice(0, state.historyIndex + 1);
+  state.history.push(structuredClone(config));
+  if (state.history.length > MAX_HISTORY) {
+    state.history.shift();
+  }
+  state.historyIndex = state.history.length - 1;
+}
+
+export const useDashboardStore = create<DashboardState>()(
+  persist(
+    immer((set, get) => ({
+      config: null,
+      activeWidgetId: null,
+      history: [],
+      historyIndex: -1,
+
+      setConfig: (config) =>
+        set((state) => {
+          state.config = config;
+          state.history = [structuredClone(config)];
+          state.historyIndex = 0;
+        }),
+
+      addWidget: (type, partial = {}) => {
+        const id = nanoid();
+        const widget: WidgetConfig = {
+          id,
+          type,
+          title: `New ${type} chart`,
+          layout: { x: 0, y: 0, w: 4, h: 3 },
+          data: { mappings: { values: [] } },
+          visualization: type === "kpi" ? {} : type === "bar" ? { variant: "grouped" } : {},
+          ...partial,
+        } as WidgetConfig;
+
+        set((state) => {
+          if (!state.config) return;
+          state.config.widgets.push(widget);
+          pushHistory(state, state.config);
+        });
+
+        return id;
+      },
+
+      updateWidget: (id, patch) =>
+        set((state) => {
+          if (!state.config) return;
+          const idx = state.config.widgets.findIndex(
+            (w) => w.id === id
+          );
+          if (idx === -1) return;
+          Object.assign(state.config.widgets[idx], patch);
+          pushHistory(state, state.config);
+        }),
+
+      removeWidget: (id) =>
+        set((state) => {
+          if (!state.config) return;
+          state.config.widgets = state.config.widgets.filter(
+            (w) => w.id !== id
+          );
+          if (state.activeWidgetId === id) {
+            state.activeWidgetId = null;
+          }
+          pushHistory(state, state.config);
+        }),
+
+      updateLayout: (layouts) =>
+        set((state) => {
+          if (!state.config) return;
+          for (const layout of layouts) {
+            const widget = state.config.widgets.find(
+              (w) => w.id === layout.i
+            );
+            if (widget) {
+              widget.layout = {
+                x: layout.x,
+                y: layout.y,
+                w: layout.w,
+                h: layout.h,
+              };
+            }
+          }
+        }),
+
+      setActiveWidget: (id) =>
+        set((state) => {
+          state.activeWidgetId = id;
+        }),
+
+      undo: () =>
+        set((state) => {
+          if (state.historyIndex <= 0) return;
+          state.historyIndex--;
+          state.config = structuredClone(
+            state.history[state.historyIndex]
+          );
+        }),
+
+      redo: () =>
+        set((state) => {
+          if (state.historyIndex >= state.history.length - 1) return;
+          state.historyIndex++;
+          state.config = structuredClone(
+            state.history[state.historyIndex]
+          );
+        }),
+
+      reset: () =>
+        set((state) => {
+          state.config = null;
+          state.activeWidgetId = null;
+          state.history = [];
+          state.historyIndex = -1;
+        }),
+    })),
+    {
+      name: "dashboard-storage",
+      partialize: (state) => ({ config: state.config }),
+    }
+  )
+);
+
+export const selectWidgets = (state: DashboardState): WidgetConfig[] =>
+  state.config?.widgets ?? [];
+
+export const selectActiveWidget = (
+  state: DashboardState
+): WidgetConfig | null =>
+  state.config?.widgets.find((w) => w.id === state.activeWidgetId) ?? null;
