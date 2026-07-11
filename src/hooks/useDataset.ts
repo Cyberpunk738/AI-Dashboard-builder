@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { nanoid } from "nanoid";
 import { useDataStore } from "@/stores/data-store";
 import { parseCSV, parseExcel, inferColumnType } from "@/lib/parsing";
 import type { Column, ColumnSummary, Dataset } from "@/types/dataset";
@@ -69,7 +70,7 @@ export function useDataset() {
         const summary = buildSummary(columns, raw.rows);
 
         const dataset: Dataset = {
-          id: crypto.randomUUID(),
+          id: nanoid(),
           name: file.name.replace(/\.[^/.]+$/, ""),
           fileName: file.name,
           columns,

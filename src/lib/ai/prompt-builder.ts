@@ -29,7 +29,7 @@ export function buildGeneratePrompt(params: {
       if (s.mean !== undefined) parts.push(`mean=${s.mean.toFixed(2)}`);
       parts.push(`nulls=${s.nullCount}`);
       const sampleStr = s.sampleValues
-        .slice(0, 4)
+        .slice(0, 2)
         .map((v) => JSON.stringify(v))
         .join(", ");
       parts.push(`samples=[${sampleStr}]`);
@@ -126,58 +126,117 @@ export function buildChatPrompt(params: {
   message: string;
   columns: Column[];
   sampleRows: Record<string, unknown>[];
+  summary?: ColumnSummary[];
+  rowCount?: number;
   currentConfig: DashboardConfig;
-  conversation: Array<{ role: string; content: string }>;
+  conversation: Array<{ role: string; content: string; actions?: unknown[] }>;
 }): string {
-  const { message, columns, sampleRows, currentConfig, conversation } =
-    params;
+  const {
+    message,
+    columns,
+    sampleRows,
+    summary,
+    rowCount,
+    currentConfig,
+    conversation,
+  } = params;
 
-  return `You are a dashboard AI assistant. The user has a dataset and dashboard open.
+  const summaryBlock = summary
+    ? summary
+        .map((s) => {
+          const parts = [`"${s.name}": ${s.distinct} unique values`];
+          if (s.min !== undefined) parts.push(`min=${s.min}`);
+          if (s.max !== undefined) parts.push(`max=${s.max}`);
+          if (s.mean !== undefined) parts.push(`mean=${s.mean.toFixed(2)}`);
+          parts.push(`nulls=${s.nullCount}`);
+          return parts.join(", ");
+        })
+        .join("\n")
+    : "";
 
-## Dataset Schema
+  const dashboardDetail = JSON.stringify(
+    {
+      title: currentConfig.title,
+      widgets: currentConfig.widgets.map((w) => ({
+        id: w.id,
+        type: w.type,
+        title: w.title,
+        description: w.description,
+        layout: w.layout,
+        data: {
+          mappings: w.data.mappings,
+          transforms: w.data.transforms,
+        },
+      })),
+    },
+    null,
+    2
+  );
+
+  const conversationBlock = conversation
+    .map((m) => {
+      const actionNote = m.actions?.length
+        ? ` [${m.actions.length} dashboard action(s) applied]`
+        : "";
+      return `${m.role}: ${m.content}${actionNote}`;
+    })
+    .join("\n");
+
+  return `You are a dashboard AI assistant helping a user explore their data. The user has a dataset loaded and a dashboard with visualizations.
+
+## Dataset
+${rowCount ? `Total rows: ${rowCount.toLocaleString()}` : ""}
+${columns.length} columns
+
+### Schema
 ${columns
-  .map((c) => `- "${c.name}" (${c.type})`)
+  .map((c) => `- "${c.name}" (${c.type})${c.nullable ? " nullable" : ""}`)
   .join("\n")}
 
-## Sample Data (${sampleRows.length} rows)
-${JSON.stringify(sampleRows.slice(0, 5), null, 2)}
+### Column Statistics
+${summaryBlock || "(none provided)"}
+
+### Sample Rows (first ${sampleRows.length})
+${JSON.stringify(sampleRows, null, 2)}
 
 ## Current Dashboard
-${JSON.stringify(
-  {
-    title: currentConfig.title,
-    widgets: currentConfig.widgets.map((w) => ({
-      id: w.id,
-      type: w.type,
-      title: w.title,
-      dataMappings: w.data.mappings,
-    })),
-  },
-  null,
-  2
-)}
+${dashboardDetail}
 
 ## Conversation
-${conversation.map((m) => `${m.role}: ${m.content}`).join("\n")}
+${conversationBlock || "(no prior conversation)"}
 
 ## User's Question
 ${message}
 
-## Response Rules
-- Answer questions about the data using the schema and sample info
-- If the user asks to modify the dashboard, include "actions" in your response
-- Actions can be: UPDATE_WIDGET, ADD_WIDGET, REMOVE_WIDGET, UPDATE_LAYOUT
-- For data questions you cannot answer from schema alone, explain what you know
-- Keep responses concise and actionable
+---
 
-Respond as JSON (no markdown):
-{
-  "text": "Your natural language response here",
-  "actions": [
-    {
-      "type": "UPDATE_WIDGET",
-      "payload": { "id": "wdg_xxx", "title": "New Title" }
-    }
-  ]
-}`;
+## Response Guidelines
+
+1. **Answer naturally** — respond as a data analyst. Reference specific columns and values from the schema. Use the sample rows to illustrate patterns, but note they are samples.
+
+2. **Dashboard actions** — use action markers to modify the dashboard. Embed them inline in your response:
+   \`\`\`
+   <<ACTION:{"type":"UPDATE_WIDGET","payload":{"id":"wdg_xxx","title":"Revenue by Country"}}>>
+   \`\`\`
+
+### Available Action Types
+
+| Action | payload | Description |
+|--------|---------|-------------|
+| UPDATE_WIDGET | { id, title?, type?, description?, data?: { mappings?, transforms? }, layout?: { w?, h? }, visualization? } | Modify a widget's properties |
+| ADD_WIDGET | { type, title?, data?: { mappings?, transforms? }, layout?: { w?, h? } } | Add a new widget |
+| REMOVE_WIDGET | "widget_id" (string) | Remove a widget by ID |
+| UPDATE_LAYOUT | { id, x?, y?, w?, h? } | Change widget position and size |
+| DUPLICATE_WIDGET | "widget_id" (string) | Clone an existing widget |
+
+### Action Rules
+- Use widget IDs from the Current Dashboard section above
+- For UPDATE_WIDGET, only include the fields that changed
+- Data mappings use: { category: "column_name", values: ["col1", "col2"], groupBy?: "column_name" }
+- Transforms use: { aggregation: "sum"|"avg"|"count"|"min"|"max"|"none", orderBy?: "col", orderDirection?: "asc"|"desc", limit?: number }
+- You can include multiple action markers in one response
+
+3. **Data questions** — if you cannot answer from the schema alone (e.g. exact values not in samples), explain what you know and suggest how to find the answer.
+
+4. **Keep responses concise** — 2-4 sentences for most answers.}`;
 }

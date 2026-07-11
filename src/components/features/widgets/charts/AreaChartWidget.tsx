@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   AreaChart,
   Area,
@@ -13,7 +14,7 @@ import {
 import type { WidgetProps } from "@/types/dashboard";
 import { COLORS, useWidgetData } from "./chart-utils";
 
-export default function AreaChartWidget({ widget, data }: WidgetProps) {
+function AreaChartWidget({ widget, data }: WidgetProps) {
   const { values, chartData, isEmpty } = useWidgetData(widget, data);
 
   if (isEmpty) {
@@ -46,3 +47,7 @@ export default function AreaChartWidget({ widget, data }: WidgetProps) {
     </ResponsiveContainer>
   );
 }
+
+export default memo(AreaChartWidget, (prev, next) => {
+  return prev.widget.id === next.widget.id && prev.data === next.data;
+});

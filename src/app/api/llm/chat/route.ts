@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { buildChatPrompt } from "@/lib/ai/prompt-builder";
+import {
+  getActiveProvider,
+  buildHeaders,
+  getBaseUrl,
+  requireApiKey,
+} from "@/lib/ai/provider";
 import type { LLMChatRequest, LLMChatResponse } from "@/types/ai";
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY ?? "",
-});
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +19,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { provider, apiKey, model } = getActiveProvider();
+    requireApiKey(provider, apiKey);
+
     const prompt = buildChatPrompt({
       message: body.message,
       columns: body.columns,
@@ -26,21 +30,34 @@ export async function POST(request: NextRequest) {
       conversation: body.conversation,
     });
 
-    const completion = await client.chat.completions.create({
-      model: process.env.LLM_MODEL ?? "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful dashboard assistant. Respond with valid JSON containing text and optional actions.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.3,
-      response_format: { type: "json_object" },
+    const response = await fetch(getBaseUrl(provider), {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a helpful dashboard assistant. Respond with valid JSON containing text and optional actions.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+      }),
     });
 
-    const content = completion.choices[0]?.message?.content;
+    if (!response.ok) {
+      const errorBody = await response.text();
+      return NextResponse.json(
+        { text: "Sorry, I encountered an error.", error: errorBody },
+        { status: 502 }
+      );
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
       return NextResponse.json(
@@ -50,7 +67,6 @@ export async function POST(request: NextRequest) {
     }
 
     const result: LLMChatResponse = JSON.parse(content);
-
     return NextResponse.json(result);
   } catch (error) {
     console.error("LLM chat error:", error);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateDashboard } from "@/lib/ai/llm-service";
+import { getActiveProvider } from "@/lib/ai/provider";
 import type { LLMGenerateRequest, LLMGenerateResponse } from "@/types/ai";
 
 export async function POST(request: NextRequest) {
@@ -13,10 +14,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const { apiKey, model } = getActiveProvider();
     if (!apiKey) {
       return NextResponse.json(
-        { error: "OPENAI_API_KEY not configured" },
+        { error: "AI provider API key not configured" },
         { status: 500 }
       );
     }
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
       },
       {
         apiKey,
-        model: process.env.LLM_MODEL ?? "gpt-4o-mini",
+        model,
       }
     );
 

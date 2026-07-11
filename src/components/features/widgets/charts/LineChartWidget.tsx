@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   LineChart,
   Line,
@@ -13,7 +14,7 @@ import {
 import type { WidgetProps } from "@/types/dashboard";
 import { COLORS, useWidgetData } from "./chart-utils";
 
-export default function LineChartWidget({ widget, data }: WidgetProps) {
+function LineChartWidget({ widget, data }: WidgetProps) {
   const { values, chartData, isEmpty } = useWidgetData(widget, data);
 
   if (isEmpty) {
@@ -46,3 +47,7 @@ export default function LineChartWidget({ widget, data }: WidgetProps) {
     </ResponsiveContainer>
   );
 }
+
+export default memo(LineChartWidget, (prev, next) => {
+  return prev.widget.id === next.widget.id && prev.data === next.data;
+});

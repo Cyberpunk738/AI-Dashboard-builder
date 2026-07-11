@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { WidgetProps } from "@/types/dashboard";
 
 const PAGE_SIZE = 20;
 
-export default function TableWidget({ widget, data }: WidgetProps) {
+function TableWidget({ widget, data }: WidgetProps) {
   const [page, setPage] = useState(0);
   const mappings = widget.data.mappings;
   const values = (mappings.values ?? []).map((v: string | { field: string }) =>
@@ -93,3 +93,7 @@ export default function TableWidget({ widget, data }: WidgetProps) {
     </div>
   );
 }
+
+export default memo(TableWidget, (prev, next) => {
+  return prev.widget.id === next.widget.id && prev.data === next.data;
+});

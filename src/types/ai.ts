@@ -1,5 +1,5 @@
 import type { Column, ColumnSummary } from "./dataset";
-import type { DashboardConfig } from "./dashboard";
+import type { DashboardConfig, WidgetType, WidgetConfig } from "./dashboard";
 
 // ============================================================
 // Request types
@@ -17,10 +17,13 @@ export interface LLMChatRequest {
   message: string;
   columns: Column[];
   sampleRows: Record<string, unknown>[];
+  summary?: ColumnSummary[];
+  rowCount?: number;
   currentConfig: DashboardConfig;
   conversation: Array<{
     role: "user" | "assistant";
     content: string;
+    actions?: WidgetAction[];
   }>;
 }
 
@@ -99,12 +102,44 @@ export interface LLMServiceError {
 export type LLMServiceResult = LLMServiceSuccess | LLMServiceError;
 
 // ============================================================
-// Chat types
+// Chat / Action types
 // ============================================================
 
+export type WidgetActionType =
+  | "UPDATE_WIDGET"
+  | "ADD_WIDGET"
+  | "REMOVE_WIDGET"
+  | "UPDATE_LAYOUT"
+  | "DUPLICATE_WIDGET";
+
 export interface WidgetAction {
-  type: "UPDATE_WIDGET" | "ADD_WIDGET" | "REMOVE_WIDGET" | "UPDATE_LAYOUT";
+  type: WidgetActionType;
   payload: unknown;
+}
+
+export interface UpdateWidgetPayload {
+  id: string;
+  title?: string;
+  type?: WidgetType;
+  description?: string;
+  data?: Partial<WidgetConfig["data"]>;
+  layout?: Partial<WidgetConfig["layout"]>;
+  visualization?: Record<string, unknown>;
+}
+
+export interface AddWidgetPayload {
+  type: WidgetType;
+  title?: string;
+  data?: Partial<WidgetConfig["data"]>;
+  layout?: Partial<WidgetConfig["layout"]>;
+}
+
+export interface UpdateLayoutPayload {
+  id: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
 }
 
 export interface LLMChatResponse {
@@ -112,7 +147,7 @@ export interface LLMChatResponse {
   actions?: WidgetAction[];
 }
 
-export type LLMProvider = "openai" | "anthropic" | "custom";
+export type LLMProvider = "deepseek" | "gemini";
 
 export interface LLMConfig {
   provider: LLMProvider;

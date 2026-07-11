@@ -31,14 +31,22 @@ interface DashboardState {
   reset: () => void;
 }
 
-const MAX_HISTORY = 50;
+const MAX_HISTORY = 20;
+
+function deepClone<T>(obj: T): T {
+  try {
+    return structuredClone(obj);
+  } catch {
+    return JSON.parse(JSON.stringify(obj)) as T;
+  }
+}
 
 function pushHistory(
   state: DashboardState,
   config: DashboardConfig
 ) {
   state.history = state.history.slice(0, state.historyIndex + 1);
-  state.history.push(structuredClone(config));
+  state.history.push(deepClone(config));
   if (state.history.length > MAX_HISTORY) {
     state.history.shift();
   }
@@ -56,7 +64,7 @@ export const useDashboardStore = create<DashboardState>()(
       setConfig: (config) =>
         set((state) => {
           state.config = config;
-          state.history = [structuredClone(config)];
+          state.history = [deepClone(config)];
           state.historyIndex = 0;
         }),
 
@@ -88,7 +96,7 @@ export const useDashboardStore = create<DashboardState>()(
             (w) => w.id === id
           );
           if (idx === -1) return;
-          Object.assign(state.config.widgets[idx], patch);
+          state.config.widgets[idx] = { ...state.config.widgets[idx], ...patch };
           pushHistory(state, state.config);
         }),
 
@@ -149,7 +157,7 @@ export const useDashboardStore = create<DashboardState>()(
         set((state) => {
           if (state.historyIndex <= 0) return;
           state.historyIndex--;
-          state.config = structuredClone(
+          state.config = deepClone(
             state.history[state.historyIndex]
           );
         }),
@@ -158,7 +166,7 @@ export const useDashboardStore = create<DashboardState>()(
         set((state) => {
           if (state.historyIndex >= state.history.length - 1) return;
           state.historyIndex++;
-          state.config = structuredClone(
+          state.config = deepClone(
             state.history[state.historyIndex]
           );
         }),

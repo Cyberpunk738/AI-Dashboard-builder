@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   BarChart,
   Bar,
@@ -13,7 +14,7 @@ import {
 import type { WidgetProps } from "@/types/dashboard";
 import { COLORS, useWidgetData } from "./chart-utils";
 
-export default function BarChartWidget({ widget, data }: WidgetProps) {
+function BarChartWidget({ widget, data }: WidgetProps) {
   const { values, chartData, isEmpty } = useWidgetData(widget, data);
 
   if (isEmpty) {
@@ -44,3 +45,7 @@ export default function BarChartWidget({ widget, data }: WidgetProps) {
     </ResponsiveContainer>
   );
 }
+
+export default memo(BarChartWidget, (prev, next) => {
+  return prev.widget.id === next.widget.id && prev.data === next.data;
+});

@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { WidgetProps } from "@/types/dashboard";
 
-export default function StatWidget({ widget, data }: WidgetProps) {
+function StatWidget({ widget, data }: WidgetProps) {
   const mappings = widget.data.mappings;
   const values =
     mappings.values?.map((v: string | { field: string }) =>
@@ -106,3 +106,7 @@ export default function StatWidget({ widget, data }: WidgetProps) {
     </div>
   );
 }
+
+export default memo(StatWidget, (prev, next) => {
+  return prev.widget.id === next.widget.id && prev.data === next.data;
+});

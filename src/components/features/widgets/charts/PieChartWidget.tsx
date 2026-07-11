@@ -1,10 +1,11 @@
 "use client";
 
+import { memo } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { WidgetProps } from "@/types/dashboard";
 import { COLORS, useWidgetData } from "./chart-utils";
 
-export default function PieChartWidget({ widget, data }: WidgetProps) {
+function PieChartWidget({ widget, data }: WidgetProps) {
   const { values, chartData, isEmpty } = useWidgetData(widget, data);
 
   if (isEmpty) {
@@ -37,3 +38,7 @@ export default function PieChartWidget({ widget, data }: WidgetProps) {
     </ResponsiveContainer>
   );
 }
+
+export default memo(PieChartWidget, (prev, next) => {
+  return prev.widget.id === next.widget.id && prev.data === next.data;
+});

@@ -9,12 +9,16 @@ import { validateLLMResponse } from "@/lib/validation/llm-response";
 import { DashboardConfigSchema } from "@/lib/validation/dashboard-schema";
 import { generateWidgetId, generateDashboardId } from "@/lib/utils/id";
 import type { DashboardConfig } from "@/types/dashboard";
+import {
+  getActiveProvider,
+  buildHeaders,
+  getBaseUrl,
+  requireApiKey,
+} from "./provider";
 
 // ============================================================
 // Configuration
 // ============================================================
-
-const OPENAI_BASE_URL = "https://api.openai.com/v1/chat/completions";
 
 const DEFAULT_CONFIG = {
   maxRetries: 3,
@@ -27,7 +31,7 @@ const RETRY_DELAYS = [1_000, 2_000, 4_000];
 // Low-level fetch wrapper
 // ============================================================
 
-interface OpenAIResponse {
+interface LLMResponse {
   choices: Array<{
     message: {
       content: string | null;
@@ -44,8 +48,18 @@ async function callLLM(
   prompt: string,
   config: LLMServiceConfig
 ): Promise<string> {
+  const { provider, apiKey: envKey, model: envModel } = getActiveProvider();
+  const apiKey = config.apiKey || envKey;
+  const model = config.model || envModel;
+  requireApiKey(provider, apiKey);
+  const baseUrl = getBaseUrl(provider);
+
+  const timeout = config.timeout ?? DEFAULT_CONFIG.timeout;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
   const body = JSON.stringify({
-    model: config.model,
+    model,
     messages: [
       {
         role: "system",
@@ -58,41 +72,40 @@ async function callLLM(
     max_tokens: 4096,
   });
 
-  const response = await fetch(OPENAI_BASE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body,
-    signal: AbortSignal.timeout(
-      config.timeout ?? DEFAULT_CONFIG.timeout
-    ),
-  });
+  try {
+    const response = await fetch(baseUrl, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body,
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new LLMError(
-      `LLM API error (${response.status}): ${errorBody}`,
-      "LLM_ERROR"
-    );
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new LLMError(
+        `LLM API error (${response.status}): ${errorBody}`,
+        "LLM_ERROR"
+      );
+    }
+
+    const data = (await response.json()) as LLMResponse;
+
+    if (data.error) {
+      throw new LLMError(
+        `LLM API error: ${data.error.message}`,
+        "LLM_ERROR"
+      );
+    }
+
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new LLMError("Empty LLM response", "LLM_ERROR");
+    }
+
+    return content;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = (await response.json()) as OpenAIResponse;
-
-  if (data.error) {
-    throw new LLMError(
-      `LLM API error: ${data.error.message}`,
-      "LLM_ERROR"
-    );
-  }
-
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new LLMError("Empty LLM response", "LLM_ERROR");
-  }
-
-  return content;
 }
 
 // ============================================================

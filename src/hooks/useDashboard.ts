@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { nanoid } from "nanoid";
 import { useDashboardStore } from "@/stores/dashboard-store";
 import { useDataStore } from "@/stores/data-store";
@@ -8,12 +8,33 @@ import type { DashboardConfig } from "@/types/dashboard";
 import type { LLMGenerateRequest, LLMGenerateResponse } from "@/types/ai";
 
 export function useDashboard() {
-  const store = useDashboardStore();
   const dataset = useDataStore((s) => s.dataset);
+
+  const config = useDashboardStore((s) => s.config);
+  const activeWidgetId = useDashboardStore((s) => s.activeWidgetId);
+  const historyIndex = useDashboardStore((s) => s.historyIndex);
+  const historyLength = useDashboardStore((s) => s.history.length);
+
+  const activeWidget = useMemo(
+    () => config?.widgets.find((w) => w.id === activeWidgetId) ?? null,
+    [config, activeWidgetId]
+  );
+
+  // Stable store action references — these never change
+  const setConfig = useDashboardStore.getState().setConfig;
+  const addWidget = useDashboardStore.getState().addWidget;
+  const updateWidget = useDashboardStore.getState().updateWidget;
+  const removeWidget = useDashboardStore.getState().removeWidget;
+  const duplicateWidget = useDashboardStore.getState().duplicateWidget;
+  const updateLayout = useDashboardStore.getState().updateLayout;
+  const setActiveWidgetFn = useDashboardStore.getState().setActiveWidget;
+  const undo = useDashboardStore.getState().undo;
+  const redo = useDashboardStore.getState().redo;
+  const reset = useDashboardStore.getState().reset;
 
   const createDashboard = useCallback(
     (title?: string) => {
-      const config: DashboardConfig = {
+      const dashboardConfig: DashboardConfig = {
         id: nanoid(),
         schemaVersion: 1,
         title: title ?? `Dashboard - ${new Date().toLocaleDateString()}`,
@@ -29,10 +50,10 @@ export function useDashboard() {
           version: 1,
         },
       };
-      store.setConfig(config);
-      return config.id;
+      setConfig(dashboardConfig);
+      return dashboardConfig.id;
     },
-    [store, dataset]
+    [dataset, setConfig]
   );
 
   const generateDashboard = useCallback(
@@ -41,7 +62,7 @@ export function useDashboard() {
 
       const request: LLMGenerateRequest = {
         columns: dataset.columns,
-        sampleRows: dataset.rows.slice(0, 5),
+        sampleRows: dataset.rows.slice(0, 2),
         summary: dataset.summary,
         rowCount: dataset.rowCount,
       };
@@ -53,41 +74,48 @@ export function useDashboard() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate dashboard");
+        const errorBody = await response.text();
+        let detail = "";
+        try {
+          const parsed = JSON.parse(errorBody);
+          detail = parsed.error || parsed.details || errorBody;
+        } catch {
+          detail = errorBody;
+        }
+        throw new Error(`Failed to generate dashboard: ${detail}`);
       }
 
       const result: LLMGenerateResponse = await response.json();
 
-      // The API now returns a fully-formed DashboardConfig under `config`
-      store.setConfig(result.config);
+      setConfig(result.config);
       return result;
     },
-    [dataset, store]
+    [dataset, setConfig]
   );
 
-  const canUndo = store.historyIndex > 0;
-  const canRedo = store.historyIndex < store.history.length - 1;
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < historyLength - 1;
+
+  const widgets = useMemo(() => config?.widgets ?? [], [config]);
 
   return {
-    config: store.config,
-    widgets: store.config?.widgets ?? [],
-    activeWidgetId: store.activeWidgetId,
-    activeWidget: store.config?.widgets.find(
-      (w) => w.id === store.activeWidgetId
-    ),
+    config,
+    widgets,
+    activeWidgetId,
+    activeWidget,
     canUndo,
     canRedo,
 
     createDashboard,
     generateDashboard,
-    addWidget: store.addWidget,
-    updateWidget: store.updateWidget,
-    removeWidget: store.removeWidget,
-    duplicateWidget: store.duplicateWidget,
-    updateLayout: store.updateLayout,
-    setActiveWidget: store.setActiveWidget,
-    undo: store.undo,
-    redo: store.redo,
-    reset: store.reset,
+    addWidget,
+    updateWidget,
+    removeWidget,
+    duplicateWidget,
+    updateLayout,
+    setActiveWidget: setActiveWidgetFn,
+    undo,
+    redo,
+    reset,
   };
 }

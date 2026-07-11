@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Wand2, Plus, Undo2, LayoutDashboard, Loader2 } from "lucide-react";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useDataStore } from "@/stores/data-store";
@@ -27,23 +27,33 @@ export function DashboardCanvas() {
 
   const dataset = useDataStore((s) => s.dataset);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
 
   const handleGenerate = useCallback(async () => {
     if (!dataset) return;
     setIsGenerating(true);
+    setGenerateError(null);
     try {
       await generateDashboard();
-    } catch {
-      // Error handled by hook
+    } catch (err) {
+      setGenerateError(
+        err instanceof Error ? err.message : "Generation failed"
+      );
     } finally {
       setIsGenerating(false);
     }
   }, [dataset, generateDashboard]);
 
+  const layoutRafRef = useRef<number | null>(null);
+
   const handleLayoutChange = useCallback(
     (layouts: GridLayout[]) => {
-      updateLayout(layouts);
+      if (layoutRafRef.current) cancelAnimationFrame(layoutRafRef.current);
+      layoutRafRef.current = requestAnimationFrame(() => {
+        updateLayout(layouts);
+        layoutRafRef.current = null;
+      });
     },
     [updateLayout]
   );
@@ -65,6 +75,11 @@ export function DashboardCanvas() {
   if (!config) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
+        {generateError && (
+          <div className="mx-6 mt-4 max-w-xl rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {generateError}
+          </div>
+        )}
         <EmptyState
           icon={LayoutDashboard}
           title="No dashboard yet"
@@ -164,6 +179,11 @@ export function DashboardCanvas() {
         </div>
       </div>
 
+      {generateError && (
+        <div className="mx-6 mt-4 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {generateError}
+        </div>
+      )}
       <div className="flex-1 overflow-auto p-6">
         <DashboardGrid
           widgets={widgets}

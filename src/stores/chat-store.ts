@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { nanoid } from "nanoid";
 import type { ChatMessage, MessageRole } from "@/types/chat";
+import type { WidgetAction } from "@/types/ai";
 
 interface ChatState {
   messages: ChatMessage[];
@@ -10,6 +11,7 @@ interface ChatState {
 
   addMessage: (role: MessageRole, content: string) => string;
   appendToLastMessage: (chunk: string) => void;
+  setLastMessageActions: (actions: WidgetAction[]) => void;
   setStreaming: (streaming: boolean) => void;
   toggleOpen: () => void;
   setOpen: (open: boolean) => void;
@@ -43,6 +45,14 @@ export const useChatStore = create<ChatState>()(
         const last = state.messages[state.messages.length - 1];
         if (last && last.role === "assistant") {
           last.content += chunk;
+        }
+      }),
+
+    setLastMessageActions: (actions) =>
+      set((state) => {
+        const last = state.messages[state.messages.length - 1];
+        if (last && last.role === "assistant") {
+          last.actions = actions;
         }
       }),
 
