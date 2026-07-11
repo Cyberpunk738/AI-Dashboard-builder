@@ -83,6 +83,7 @@ export function useDashboard() {
     addWidget: store.addWidget,
     updateWidget: store.updateWidget,
     removeWidget: store.removeWidget,
+    duplicateWidget: store.duplicateWidget,
     updateLayout: store.updateLayout,
     setActiveWidget: store.setActiveWidget,
     undo: store.undo,

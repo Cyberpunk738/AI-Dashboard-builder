@@ -23,6 +23,7 @@ interface DashboardState {
   ) => string;
   updateWidget: (id: string, patch: Partial<WidgetConfig>) => void;
   removeWidget: (id: string) => void;
+  duplicateWidget: (id: string) => void;
   updateLayout: (layouts: GridLayout[]) => void;
   setActiveWidget: (id: string | null) => void;
   undo: () => void;
@@ -100,6 +101,24 @@ export const useDashboardStore = create<DashboardState>()(
           if (state.activeWidgetId === id) {
             state.activeWidgetId = null;
           }
+          pushHistory(state, state.config);
+        }),
+
+      duplicateWidget: (id) =>
+        set((state) => {
+          if (!state.config) return;
+          const source = state.config.widgets.find((w) => w.id === id);
+          if (!source) return;
+          const clone = structuredClone(source);
+          clone.id = nanoid();
+          clone.title = `${source.title} (copy)`;
+          clone.layout = {
+            ...clone.layout,
+            x: Math.min(clone.layout.x + 1, 10),
+            y: clone.layout.y + clone.layout.h + 1,
+          };
+          state.config.widgets.push(clone);
+          state.activeWidgetId = clone.id;
           pushHistory(state, state.config);
         }),
 
