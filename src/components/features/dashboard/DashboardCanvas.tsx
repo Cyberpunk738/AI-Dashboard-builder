@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Wand2, Plus, Undo2, LayoutDashboard, Loader2 } from "lucide-react";
+import { Wand2, Plus, Undo2, LayoutDashboard, Loader2, Upload } from "lucide-react";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useDataStore } from "@/stores/data-store";
+import { useDashboardStore } from "@/stores/dashboard-store";
 import { DashboardGrid } from "./DashboardGrid";
 import { WidgetRenderer } from "@/components/features/widgets/WidgetRenderer";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -12,6 +13,8 @@ import type { GridLayout } from "@/types/dashboard";
 const WIDGET_TYPES = ["bar", "line", "pie", "area", "kpi", "table"] as const;
 
 export function DashboardCanvas() {
+  const clearDataset = useDataStore((s) => s.clearDataset);
+  const resetDashboard = useDashboardStore((s) => s.reset);
   const {
     config,
     widgets,
@@ -83,7 +86,7 @@ export function DashboardCanvas() {
         <EmptyState
           icon={LayoutDashboard}
           title="No dashboard yet"
-          description="Generate one with AI from your data, or add widgets manually"
+          description="Instantly visualize your data, or add widgets manually"
           action={
             <div className="flex gap-3">
               <button
@@ -98,7 +101,7 @@ export function DashboardCanvas() {
                 )}
                 {isGenerating
                   ? "Generating..."
-                  : "Generate with AI"}
+                  : "Visualize Data"}
               </button>
               <button
                 onClick={() => handleAddWidget("kpi")}
@@ -132,6 +135,18 @@ export function DashboardCanvas() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              clearDataset();
+              resetDashboard();
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"
+            title="Upload a new file"
+          >
+            <Upload className="h-4 w-4" />
+            New File
+          </button>
+
           <button
             onClick={undo}
             disabled={!canUndo}

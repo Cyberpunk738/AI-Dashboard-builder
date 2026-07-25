@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateDashboard } from "@/lib/ai/llm-service";
 import { getActiveProvider } from "@/lib/ai/provider";
+import { generateFallbackDashboard } from "@/lib/parsing/auto-dashboard";
 import type { LLMGenerateRequest, LLMGenerateResponse } from "@/types/ai";
 
 export async function POST(request: NextRequest) {
@@ -15,11 +16,15 @@ export async function POST(request: NextRequest) {
     }
 
     const { apiKey, model } = getActiveProvider();
+    
+    // If no API key configured, generate deterministic local dashboard directly
     if (!apiKey) {
-      return NextResponse.json(
-        { error: "AI provider API key not configured" },
-        { status: 500 }
-      );
+      const fallbackConfig = generateFallbackDashboard({
+        columns: body.columns,
+        sampleRows: body.sampleRows,
+        fileName: body.fileName,
+      });
+      return NextResponse.json({ config: fallbackConfig, raw: null });
     }
 
     const result = await generateDashboard(
@@ -39,12 +44,17 @@ export async function POST(request: NextRequest) {
     );
 
     if (!result.success) {
-      const status =
-        result.code === "INVALID_REQUEST" ? 400 : 502;
-      return NextResponse.json(
-        { error: result.error, code: result.code, details: result.details },
-        { status }
-      );
+      console.warn("LLM API failed or rate-limited. Falling back to local JavaScript dashboard generator:", result.error);
+      const fallbackConfig = generateFallbackDashboard({
+        columns: body.columns,
+        sampleRows: body.sampleRows,
+        fileName: body.fileName,
+      });
+      return NextResponse.json({
+        config: fallbackConfig,
+        raw: null,
+        notice: `Generated via local JS analyzer (${result.error})`,
+      });
     }
 
     const response: LLMGenerateResponse = {
@@ -66,3 +76,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

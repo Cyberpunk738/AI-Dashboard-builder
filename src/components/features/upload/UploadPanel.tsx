@@ -29,11 +29,10 @@ export function UploadPanel() {
       <div className="w-full max-w-xl">
         <div className="mb-10 text-center">
           <h1 className="text-4xl font-bold tracking-tight">
-            AI Dashboard Builder
+            Instant Data & Financial Visualizer
           </h1>
           <p className="mt-3 text-base text-muted-foreground">
-            Upload a CSV or Excel file to generate a smart dashboard
-            in seconds
+            Upload any CSV or Excel file—including bank statements, financial records, or business datasets—to get instant visual analytics in your browser.
           </p>
         </div>
 

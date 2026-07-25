@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback } from "react";
-import GridLayout from "react-grid-layout";
+import GridLayout, { WidthProvider } from "react-grid-layout";
 import { GripHorizontal, Settings, Trash2 } from "lucide-react";
 import type { WidgetConfig, GridLayout as GridLayoutType } from "@/types/dashboard";
 import { cn } from "@/lib/utils";
+
+const ReactGridLayout = WidthProvider(GridLayout);
 
 interface DashboardGridProps {
   widgets: WidgetConfig[];
@@ -45,7 +47,7 @@ export function DashboardGrid({
   );
 
   return (
-    <GridLayout
+    <ReactGridLayout
       className="layout"
       layout={layout}
       cols={COLS}
@@ -105,6 +107,6 @@ export function DashboardGrid({
           </div>
         </div>
       ))}
-    </GridLayout>
+    </ReactGridLayout>
   );
 }

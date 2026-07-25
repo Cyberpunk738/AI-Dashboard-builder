@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { useDashboardStore } from "@/stores/dashboard-store";
 import { useDataStore } from "@/stores/data-store";
 import type { DashboardConfig } from "@/types/dashboard";
+import { generateAutoDashboard } from "@/lib/parsing/auto-dashboard";
 import type { LLMGenerateRequest, LLMGenerateResponse } from "@/types/ai";
 
 export function useDashboard() {
@@ -56,42 +57,18 @@ export function useDashboard() {
     [dataset, setConfig]
   );
 
-  const generateDashboard = useCallback(
-    async (): Promise<LLMGenerateResponse> => {
-      if (!dataset) throw new Error("No dataset loaded");
+  const generateDashboard = useCallback(async () => {
+    if (!dataset) throw new Error("No dataset loaded");
 
-      const request: LLMGenerateRequest = {
-        columns: dataset.columns,
-        sampleRows: dataset.rows.slice(0, 2),
-        summary: dataset.summary,
-        rowCount: dataset.rowCount,
-      };
+    const autoConfig = generateAutoDashboard({
+      columns: dataset.columns,
+      sampleRows: dataset.rows.slice(0, 5),
+      fileName: dataset.fileName,
+    });
 
-      const response = await fetch("/api/llm/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        let detail = "";
-        try {
-          const parsed = JSON.parse(errorBody);
-          detail = parsed.error || parsed.details || errorBody;
-        } catch {
-          detail = errorBody;
-        }
-        throw new Error(`Failed to generate dashboard: ${detail}`);
-      }
-
-      const result: LLMGenerateResponse = await response.json();
-
-      setConfig(result.config);
-      return result;
-    },
-    [dataset, setConfig]
-  );
+    setConfig(autoConfig);
+    return { config: autoConfig, raw: null };
+  }, [dataset, setConfig]);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < historyLength - 1;

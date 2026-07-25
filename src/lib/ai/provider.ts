@@ -24,7 +24,7 @@ export const PROVIDERS: Record<AIProvider, ProviderMeta> = {
   gemini: {
     baseUrl:
       "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-pro",
     envKey: "GEMINI_API_KEY",
     modelEnvKey: "GEMINI_AI_MODEL",
   },

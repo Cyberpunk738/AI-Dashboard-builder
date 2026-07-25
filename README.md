@@ -1,18 +1,18 @@
-# AI Dashboard Builder
+# Instant Data & Bank Statement Visualizer
 
-An AI-powered dashboard builder that generates interactive data visualizations from CSV and Excel files. Upload your data, describe what you want in natural language, and get a live dashboard with bar charts, line charts, pie charts, area charts, KPI cards, and tables.
+An instant, high-performance, **100% client-side** data visualization and bank statement analytics application. Upload any CSV or Excel file (bank account statements, business financial logs, sales records, leads, or fitness data) and get a live, interactive dashboard with financial KPI cards, area trend charts, category bar/pie charts, and interactive data tables—**with zero AI API keys, zero server latency, and 100% data privacy.**
 
 ---
 
-## Features
+## Key Features
 
-- **AI-Powered Generation** — Upload a dataset and generate a full dashboard with a single click. The LLM analyzes column types, statistics, and sample data to design appropriate visualizations.
-- **Natural Language Chat** — Refine your dashboard via conversation. Send messages like *"Add revenue by region"* or *"Change the bar chart to a line chart"* and the AI applies changes via structured action markers.
-- **Drag-and-Drop Layout** — Rearrange, resize, and reorder widgets using `react-grid-layout`.
-- **Widget Editor** — Edit any widget's data mappings, style options, and layout through a side panel with Data / Style / Layout tabs.
-- **Multi-Provider LLM Support** — Switch between DeepSeek and Google Gemini via environment variables. Both use native `fetch()` against OpenAI-compatible endpoints.
-- **Undo / Redo** — Full history with 20-entry undo stack using Zustand + Immer + `structuredClone`.
-- **Streaming Chat** — Server-Sent Events (SSE) streaming with real-time token display and inline action extraction.
+- ⚡ **Instant Client-Side Auto-Visualization** — Drag & drop any CSV or Excel file to generate an interactive dashboard instantly in your browser with 0 wait time.
+- 🏦 **Bank Statement & Financial Analytics** — Specialized algorithms detect bank statement fields (`Debit`, `Credit`, `Amount`, `Income`, `Expense`, `Balance`, `Category`, `Date`) to calculate Net Savings, Total Income, Total Expenses, and Monthly Spending Distributions.
+- 📊 **General Dataset Profiler** — Auto-detects metrics, dates, and categories for sales, fitness, leads, or custom spreadsheets.
+- 🔒 **100% Data Privacy** — All file parsing, statistical calculations, and dashboard generation happen strictly inside your browser. No files or financial records are uploaded to any server or third-party AI service.
+- 🎛️ **Drag-and-Drop Grid Layout** — Rearrange, resize, and reorder widgets using `react-grid-layout`.
+- ✏️ **Interactive Widget Editor** — Edit data mappings, chart colors, axis titles, and styles via an intuitive side drawer.
+- ↺ **Undo / Redo** — Full dashboard edit history with Zustand state management.
 
 ---
 
@@ -26,10 +26,8 @@ An AI-powered dashboard builder that generates interactive data visualizations f
 | State | Zustand + Immer |
 | Charts | Recharts |
 | Grid | react-grid-layout |
-| LLM | DeepSeek / Gemini (OpenAI-compatible API, native `fetch`) |
-| Validation | Zod |
 | Parsing | PapaParse (CSV), SheetJS/xlsx (Excel) |
-| UI Primitives | Radix UI (Tabs, Dialog, Select, Tooltip, etc.) |
+| UI Primitives | Radix UI (Tabs, Dialog, Select, Tooltip) |
 
 ---
 
@@ -44,33 +42,9 @@ An AI-powered dashboard builder that generates interactive data visualizations f
 
 ```bash
 git clone <repo-url>
-cd ai-dashboard-builder
+cd AI-Dashboard-builder
 npm install
 ```
-
-### Environment Variables
-
-Copy `.env.example` to `.env.local` and configure:
-
-```env
-# AI Provider (deepseek | gemini)
-AI_PROVIDER=deepseek
-
-# Model override (optional — each provider has a sensible default)
-# Generic fallback (used if no provider-specific var is set):
-# AI_MODEL=deepseek-chat
-# Per-provider overrides (take precedence over AI_MODEL):
-# DEEPSEEK_AI_MODEL=deepseek-chat
-# GEMINI_AI_MODEL=gemini-2.0-flash
-
-# DeepSeek
-DEEPSEEK_API_KEY=sk-your-deepseek-key
-
-# Gemini (used when AI_PROVIDER=gemini)
-GEMINI_API_KEY=your-gemini-key
-```
-
-At minimum, set `DEEPSEEK_API_KEY` or `GEMINI_API_KEY` (and `AI_PROVIDER`) before running.
 
 ### Development
 
@@ -78,196 +52,23 @@ At minimum, set `DEEPSEEK_API_KEY` or `GEMINI_API_KEY` (and `AI_PROVIDER`) befor
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Upload a CSV or Excel file, then click **Generate with AI**.
+Open [http://localhost:3000](http://localhost:3000) in your browser. Drag and drop any CSV or Excel file (e.g., bank statement or sales log) to instantly see your visual dashboard.
 
-### Commands
+### Production Build
+
+```bash
+npm run build
+npm run start
+```
+
+---
+
+## Available Commands
 
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start development server |
-| `npm run build` | Production build |
+| `npm run build` | Build production bundle |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
 | `npm run typecheck` | Run TypeScript type checking |
-
----
-
-## Architecture
-
-### Data Flow
-
-```
-User Uploads File
-      │
-      ▼
-Client-Side Parsing (PapaParse / SheetJS)
-      │
-      ▼
-Zustand Data Store (columns, rows, summary)
-      │
-      ▼
-User clicks "Generate with AI"
-      │
-      ▼
-POST /api/llm/generate → buildGeneratePrompt() → LLM API → parse + validate → DashboardConfig
-      │
-      ▼
-Zustand Dashboard Store (config, history, undo/redo)
-      │
-      ▼
-WidgetRenderer renders each widget via the registry
-```
-
-### LLM Chat Flow
-
-```
-User sends message
-      │
-      ▼
-useChat hook → POST /api/llm/chat/stream (SSE)
-      │
-      ▼
-Server: buildChatPrompt() → LLM API (stream: true) → forward tokens as SSE
-      │
-      ▼
-Client: accumulate tokens → strip action markers → display text
-      │
-      ▼
-Stream complete → extract <<ACTION:{...}>> markers → apply to dashboard store
-```
-
-### Project Structure
-
-```
-src/
-├── app/                          # Next.js App Router
-│   ├── api/
-│   │   └── llm/
-│   │       ├── generate/route.ts # Dashboard generation endpoint
-│   │       ├── chat/route.ts     # Chat completion endpoint
-│   │       └── chat/stream/      # SSE streaming chat endpoint
-│   ├── page.tsx                  # Landing page (file upload)
-│   └── (dashboard)/
-│       └── [id]/page.tsx         # Dashboard view page
-├── components/
-│   ├── features/
-│   │   ├── chat/                 # Chat panel UI
-│   │   ├── dashboard/            # Grid, canvas, empty state
-│   │   ├── data-preview/         # Dataset preview
-│   │   ├── editor/               # Widget editor panel
-│   │   │   └── sections/         # Extracted style tabs per widget type
-│   │   ├── upload/               # File dropzone and upload panel
-│   │   └── widgets/              # Widget renderer, registry, error boundary
-│   │       └── charts/           # Bar, Line, Pie, Area chart components
-│   └── shared/                   # Shared UI components
-├── hooks/
-│   ├── useChat.ts                # Streaming chat logic + action extraction
-│   ├── useDashboard.ts           # Dashboard CRUD + generation orchestration
-│   └── useDataset.ts             # Dataset loading + parsing
-├── lib/
-│   ├── ai/
-│   │   ├── provider.ts           # Multi-provider config (DeepSeek/Gemini)
-│   │   ├── llm-service.ts        # LLM fetch with retry + validation pipeline
-│   │   └── prompt-builder.ts     # Generate + chat prompt templates
-│   ├── commands/                 # Structured command system (NL → actions)
-│   │   ├── types.ts              # Discriminated union of 6 command types
-│   │   ├── schemas.ts            # Zod per-command schemas
-│   │   ├── validator.ts          # Two-phase validator (structural + semantic)
-│   │   ├── parser.ts             # NL → structured commands via LLM
-│   │   └── executor.ts           # Commands → store mutations
-│   ├── parsing/                  # CSV and Excel parsers
-│   ├── utils/                    # cn(), generateId(), etc.
-│   └── validation/               # Zod schemas (dashboard, LLM response)
-├── stores/
-│   ├── dashboard-store.ts        # Dashboard config + undo/redo (Zustand + Immer)
-│   ├── data-store.ts             # Dataset state
-│   └── chat-store.ts             # Messages + streaming state
-└── types/
-    ├── ai.ts                     # LLM provider, request/response types
-    ├── chat.ts                   # Chat message, SSE event types
-    ├── dashboard.ts              # WidgetConfig, DashboardConfig, etc.
-    ├── dashboard-schema.ts       # Re-exports from validation
-    ├── dataset.ts                # Column, Row, Dataset types
-    └── upload.ts                 # Upload state, progress types
-```
-
----
-
-## Widget Types
-
-| Type | Description | Style Options |
-|------|-------------|---------------|
-| **Bar** | Grouped/stacked vertical or horizontal bars | Variant (grouped, stacked, stacked%), horizontal, border radius |
-| **Line** | Time-series line chart | Smooth curves, show points, fill area, connect nulls |
-| **Pie** | Pie/donut chart (max 8 slices) | Donut style, show labels, show percentages |
-| **Area** | Stacked area chart | Stacked, show points, fill opacity |
-| **KPI** | Single metric with trend indicator | Number format (compact, currency, percentage, etc.), trend direction |
-| **Table** | Paginated data table | Pagination toggle, page size, search |
-
----
-
-## AI Command System
-
-The structured command system converts natural language into typed, validated dashboard mutations:
-
-1. **Parse** — User message is sent to LLM with `response_format: json_object`
-2. **Schema** — Zod discriminates 6 command types: `ADD_WIDGET`, `UPDATE_WIDGET`, `REMOVE_WIDGET`, `UPDATE_LAYOUT`, `DUPLICATE_WIDGET`, `SET_THEME`
-3. **Validate** — Two-phase: structural (Zod) then semantic (widget IDs exist, column names valid)
-4. **Execute** — Commands are dispatched to the Zustand dashboard store
-
----
-
-## Configuration
-
-### LLM Providers
-
-| Provider | Base URL | Default Model | Env Key |
-|----------|----------|---------------|---------|
-| DeepSeek | `https://api.deepseek.com/v1/chat/completions` | `deepseek-chat` | `DEEPSEEK_API_KEY` |
-| Gemini | `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` | `gemini-2.0-flash` | `GEMINI_API_KEY` |
-
-Set `AI_PROVIDER=deepseek` or `AI_PROVIDER=gemini` to switch.
-
-### Model Selection Priority
-
-1. `DEEPSEEK_AI_MODEL` or `GEMINI_AI_MODEL` (provider-specific)
-2. `AI_MODEL` (generic fallback)
-3. Provider default
-
----
-
-## Key Design Decisions
-
-- **No OpenAI SDK** — All LLM calls use native `fetch()` against OpenAI-compatible endpoints, reducing bundle size and avoiding SDK lock-in.
-- **Client-Side Parsing** — Files are parsed in the browser using PapaParse/SheetJS. Raw data never leaves the client; only column metadata and sample rows are sent to the server for LLM context.
-- **Immer for State** — Zustand + Immer enables direct mutable-style state updates while maintaining undo/redo via `structuredClone` snapshots (with JSON fallback for uncloneable values).
-- **Post-hoc Action Extraction** — Streaming chat tokens are forwarded raw to the frontend. Action markers (`<<ACTION:{...}>>`) are stripped for display and extracted after the stream completes, avoiding complex server-side boundary tracking.
-- **`response_format`** — The generate endpoint avoids `response_format: { type: "json_object" }` because DeepSeek does not support it. The prompt explicitly instructs JSON-only output instead.
-
----
-
-## Troubleshooting
-
-### LLM API Errors
-
-| Error | Likely Cause | Fix |
-|-------|-------------|-----|
-| `402 Insufficient Balance` | DeepSeek account out of credits | Top up at https://platform.deepseek.com |
-| `404 model not found` | Wrong model name for active provider | Check `AI_MODEL` / provider-specific model env vars; remove stale overrides |
-| `429 RESOURCE_EXHAUSTED` | Gemini free tier rate limit | Wait ~20s and retry; reduce sample rows in the prompt; upgrade to paid tier |
-| `500 API key not configured` | Missing or empty API key | Set `DEEPSEEK_API_KEY` or `GEMINI_API_KEY` in `.env.local` |
-| `502 Bad Gateway` | LLM API unreachable or returned error | Check the error banner in the UI for details; verify network connectivity |
-
-### Common Issues
-
-**Dashboard not generating after upload** — Check the browser console for error details. The error banner at the top of the page shows the server's response. Common causes: missing API key, expired credits, or rate limiting.
-
-**Chat not responding** — Ensure the dataset is loaded and a dashboard exists. The chat requires column context to generate meaningful responses.
-
-**Widgets not rendering** — Verify the widget has valid data mappings (category and values columns). The `WidgetFallback` component shows validation errors.
-
----
-
-## License
-
-MIT

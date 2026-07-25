@@ -3,6 +3,8 @@
 import { useCallback } from "react";
 import { nanoid } from "nanoid";
 import { useDataStore } from "@/stores/data-store";
+import { useDashboardStore } from "@/stores/dashboard-store";
+import { generateAutoDashboard } from "@/lib/parsing/auto-dashboard";
 import { parseCSV, parseExcel, inferColumnType } from "@/lib/parsing";
 import type { Column, ColumnSummary, Dataset } from "@/types/dataset";
 import type { UploadResult } from "@/types/upload";
@@ -81,6 +83,12 @@ export function useDataset() {
         };
 
         store.setDataset(dataset);
+        const autoConfig = generateAutoDashboard({
+          columns: dataset.columns,
+          sampleRows: dataset.rows.slice(0, 5),
+          fileName: dataset.fileName,
+        });
+        useDashboardStore.getState().setConfig(autoConfig);
       } catch (err) {
         store.setError(
           err instanceof Error
@@ -123,6 +131,12 @@ export function useDataset() {
       };
 
       store.setDataset(dataset);
+      const autoConfig = generateAutoDashboard({
+        columns: dataset.columns,
+        sampleRows: dataset.rows.slice(0, 5),
+        fileName: dataset.fileName,
+      });
+      useDashboardStore.getState().setConfig(autoConfig);
     },
     [store]
   );
