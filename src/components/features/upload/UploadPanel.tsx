@@ -32,7 +32,7 @@ export function UploadPanel() {
             Instant Data & Financial Visualizer
           </h1>
           <p className="mt-3 text-base text-muted-foreground">
-            Upload any CSV or Excel file—including bank statements, financial records, or business datasets—to get instant visual analytics in your browser.
+            Upload any CSV, Excel, or PDF bank statement to get instant visual analytics in your browser.
           </p>
         </div>
 

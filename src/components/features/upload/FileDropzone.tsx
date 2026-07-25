@@ -133,7 +133,9 @@ export function FileDropzone({
     ".csv",
     ".xlsx",
     ".xls",
+    ".pdf",
     "text/csv",
+    "application/pdf",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.ms-excel",
   ]).join(",");
@@ -203,7 +205,7 @@ function IdleState() {
       <div className="text-center">
         <p className="text-lg font-medium">Drop your file here</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          or click to browse &middot; CSV or Excel up to 50MB
+          or click to browse &middot; CSV, Excel, or PDF Bank Statement up to 50MB
         </p>
       </div>
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -214,6 +216,10 @@ function IdleState() {
         <span className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5">
           <FileText className="h-3.5 w-3.5" />
           .xlsx
+        </span>
+        <span className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5">
+          <FileText className="h-3.5 w-3.5" />
+          .pdf
         </span>
       </div>
     </div>

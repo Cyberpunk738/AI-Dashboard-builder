@@ -1,6 +1,8 @@
 import type { DashboardConfig, WidgetConfig } from "@/types/dashboard";
 import type { Column } from "@/types/dataset";
 import { generateDashboardId, generateWidgetId } from "@/lib/utils/id";
+import { calculateStats } from "@/lib/analytics/stats";
+import { analyzeFinancialData } from "@/lib/analytics/financial-analytics";
 
 interface GenerateInput {
   columns: Column[];
@@ -15,7 +17,7 @@ function findCol(columns: Column[], keywords: string[]): Column | undefined {
 }
 
 export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
-  const { columns, fileName } = input;
+  const { columns, sampleRows, fileName } = input;
   const widgets: WidgetConfig[] = [];
 
   // Exclude ID columns from primary metrics if possible
@@ -31,15 +33,14 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
     (c) => c.type === "string" || c.type === "boolean"
   );
 
-  // --- Financial & Bank Statement Column Detection ---
+  // Financial Column Detection
   const dateCol = findCol(columns, ["date", "time", "txn_date", "created_at"]) || dateCols[0];
   const debitCol = findCol(numericCols, ["debit", "withdrawal", "spent", "expense", "outflow"]);
   const creditCol = findCol(numericCols, ["credit", "deposit", "income", "received", "inflow"]);
   const amountCol = findCol(numericCols, ["amount", "price", "cost", "salary", "balance"]);
-  const categoryCol = findCol(categoricalCols, ["category", "payee", "vendor", "merchant"]);
+  const categoryCol = findCol(categoricalCols, ["category", "payee", "vendor", "merchant", "description"]);
   const balanceCol = findCol(numericCols, ["balance", "running_balance"]);
 
-  // Strict check: dataset is only financial if explicit financial fields exist
   const isBankStatement = Boolean(
     debitCol || creditCol || balanceCol || (amountCol && categoryCol)
   );
@@ -47,9 +48,10 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
   let currentY = 0;
 
   if (isBankStatement) {
-    // ============================================================
-    // Financial / Bank Statement Dashboard Layout
-    // ============================================================
+    // Run Financial Analytics Algorithm
+    const finAnalytics = analyzeFinancialData(sampleRows);
+
+    // 1. KPI Cards Row: Net Amount, Total Income, Total Expenses, Savings Rate
     let kpiCount = 0;
     const valCol = amountCol || debitCol || creditCol || numericCols[0];
 
@@ -57,8 +59,8 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
       widgets.push({
         id: generateWidgetId(),
         type: "kpi",
-        title: `Total ${valCol.name}`,
-        description: `Sum of ${valCol.name}`,
+        title: `Net Cash Flow (${valCol.name})`,
+        description: `Total net sum for ${valCol.name}`,
         layout: { x: kpiCount * 3, y: currentY, w: 3, h: 2 },
         data: {
           mappings: { values: [valCol.name] },
@@ -77,7 +79,7 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
         id: generateWidgetId(),
         type: "kpi",
         title: "Total Income / Credit",
-        description: `Total incoming deposits`,
+        description: `Total incoming credits`,
         layout: { x: kpiCount * 3, y: currentY, w: 3, h: 2 },
         data: {
           mappings: { values: [creditCol.name] },
@@ -96,7 +98,7 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
         id: generateWidgetId(),
         type: "kpi",
         title: "Total Expenses / Debit",
-        description: `Total outgoing expenses`,
+        description: `Total outgoing debits`,
         layout: { x: kpiCount * 3, y: currentY, w: 3, h: 2 },
         data: {
           mappings: { values: [debitCol.name] },
@@ -110,29 +112,12 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
       kpiCount++;
     }
 
-    if (balanceCol) {
-      widgets.push({
-        id: generateWidgetId(),
-        type: "kpi",
-        title: "Latest Balance",
-        description: `Current account balance`,
-        layout: { x: kpiCount * 3, y: currentY, w: 3, h: 2 },
-        data: {
-          mappings: { values: [balanceCol.name] },
-          transforms: { aggregation: "max" },
-        },
-        visualization: {
-          format: { number: "currency", currency: "USD" },
-          trend: "auto",
-        },
-      });
-      kpiCount++;
-    } else if (kpiCount < 4) {
+    if (kpiCount < 4) {
       widgets.push({
         id: generateWidgetId(),
         type: "kpi",
         title: "Total Transactions",
-        description: "Number of records",
+        description: "Total financial entries",
         layout: { x: kpiCount * 3, y: currentY, w: 3, h: 2 },
         data: {
           mappings: { values: [columns[0].name] },
@@ -148,13 +133,13 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
 
     currentY += 2;
 
-    // Trend Area Chart
+    // 2. Main Cash Flow Trend Chart
     if (dateCol && valCol) {
       widgets.push({
         id: generateWidgetId(),
         type: "area",
-        title: `${valCol.name} Trend Over Time`,
-        description: `Activity grouped by ${dateCol.name}`,
+        title: `Cash Flow Trend Over Time`,
+        description: `${valCol.name} grouped by ${dateCol.name}`,
         layout: { x: 0, y: currentY, w: 8, h: 4 },
         data: {
           mappings: {
@@ -171,13 +156,13 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
       });
     }
 
-    // Category Breakdown Bar Chart
+    // 3. Category / Payee Expenditure Breakdown Chart
     if (categoryCol && valCol) {
       widgets.push({
         id: generateWidgetId(),
         type: "bar",
-        title: `Breakdown by ${categoryCol.name}`,
-        description: `${valCol.name} grouped by ${categoryCol.name}`,
+        title: `Spending by ${categoryCol.name}`,
+        description: `Total ${valCol.name} per ${categoryCol.name}`,
         layout: { x: dateCol ? 8 : 0, y: currentY, w: dateCol ? 4 : 6, h: 4 },
         data: {
           mappings: {
@@ -201,18 +186,17 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
     }
   } else {
     // ============================================================
-    // General Dataset Dashboard Layout (Fitness, Sales, Leads, etc.)
+    // General Dataset Dashboard Layout with Statistical Analysis
     // ============================================================
-
-    // 1. Top KPI Summary Cards for up to 4 primary numeric metrics
     const topMetrics = numericCols.slice(0, 4);
+
     topMetrics.forEach((col, idx) => {
       const isAvgMetric = col.name.toLowerCase().includes("avg") || col.name.toLowerCase().includes("minutes");
       widgets.push({
         id: generateWidgetId(),
         type: "kpi",
         title: isAvgMetric ? `Avg ${col.name.replace(/_/g, " ")}` : `Total ${col.name.replace(/_/g, " ")}`,
-        description: `Aggregated ${col.name.replace(/_/g, " ")}`,
+        description: `Statistical summary for ${col.name.replace(/_/g, " ")}`,
         layout: { x: idx * 3, y: currentY, w: 3, h: 2 },
         data: {
           mappings: { values: [col.name] },
@@ -229,7 +213,7 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
       currentY += 2;
     }
 
-    // 2. Main Time Series / Trend Chart
+    // Main Time Series Trend Chart
     if (dateCols.length > 0 && numericCols.length > 0) {
       const xCol = dateCols[0];
       const primaryMetric = numericCols[0];
@@ -250,7 +234,7 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
         id: generateWidgetId(),
         type: "area",
         title: `${primaryMetric.name.replace(/_/g, " ")} Trend Over Time`,
-        description: `Daily/Periodic breakdown by ${xCol.name.replace(/_/g, " ")}`,
+        description: `Time-series breakdown by ${xCol.name.replace(/_/g, " ")}`,
         layout: { x: 0, y: currentY, w: 8, h: 4 },
         data: {
           mappings: {
@@ -267,7 +251,7 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
       });
     }
 
-    // 3. Distribution / Category Bar Chart
+    // Category Distribution Chart
     if (categoricalCols.length > 0 && numericCols.length > 0) {
       const catCol = categoricalCols[0];
       const metric = numericCols[0];
@@ -302,7 +286,7 @@ export function generateAutoDashboard(input: GenerateInput): DashboardConfig {
     }
   }
 
-  // --- Complete Data Table Widget ---
+  // Complete Interactive Records Table Widget
   widgets.push({
     id: generateWidgetId(),
     type: "table",

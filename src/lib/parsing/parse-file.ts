@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { nanoid } from "nanoid";
+import { parsePDFBankStatement } from "./pdf";
 import type {
   UploadResult,
   UploadedColumn,
@@ -9,7 +10,7 @@ import type {
   UploadFileType,
 } from "@/types/upload";
 
-const ACCEPTED_EXTENSIONS = ["csv", "xlsx", "xls"];
+const ACCEPTED_EXTENSIONS = ["csv", "xlsx", "xls", "pdf"];
 const PREVIEW_SAMPLE_SIZE = 5;
 
 function getExtension(fileName: string): string {
@@ -29,7 +30,9 @@ function validateFile(
     ".csv",
     ".xlsx",
     ".xls",
+    ".pdf",
     "text/csv",
+    "application/pdf",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.ms-excel",
   ];
@@ -348,8 +351,11 @@ export async function parseFile(
 
   const ext = getExtension(file.name);
   const isExcel = ext === "xlsx" || ext === "xls";
+  const isPDF = ext === "pdf";
 
-  const parsed = isExcel
+  const parsed = isPDF
+    ? await parsePDFBankStatement(file)
+    : isExcel
     ? await parseExcelFile(file, emitProgress)
     : await parseCSVWithProgress(file, emitProgress);
 
