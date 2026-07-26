@@ -1,33 +1,22 @@
 "use client";
 
+import { useState } from "react";
+import { LandingPage } from "@/components/features/landing/LandingPage";
 import { UploadPanel } from "@/components/features/upload/UploadPanel";
-import { DashboardCanvas } from "@/components/features/dashboard/DashboardCanvas";
-import { WidgetEditor } from "@/components/features/editor/WidgetEditor";
+import { FintechDashboard } from "@/components/features/fintech/FintechDashboard";
 import { useDataStore } from "@/stores/data-store";
-import { useDashboardStore } from "@/stores/dashboard-store";
 
 export default function Home() {
   const dataset = useDataStore((s) => s.dataset);
-  const config = useDashboardStore((s) => s.config);
-  const activeWidgetId = useDashboardStore((s) => s.activeWidgetId);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
-  if (!dataset) {
-    return <UploadPanel />;
+  if (dataset) {
+    return <FintechDashboard />;
   }
 
-  return (
-    <div className="flex h-screen flex-col">
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-hidden">
-          <DashboardCanvas />
-        </div>
+  if (showUploadModal) {
+    return <UploadPanel onBackToLanding={() => setShowUploadModal(false)} />;
+  }
 
-        {config && activeWidgetId && (
-          <div className="w-80 shrink-0">
-            <WidgetEditor />
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <LandingPage onStartUpload={() => setShowUploadModal(true)} />;
 }

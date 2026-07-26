@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Poppins } from "next/font/google";
 import "./globals.css";
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const poppins = Poppins({
+  weight: ["300", "400", "500", "600", "700", "800"],
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "AI Dashboard Builder",
-  description: "Upload data and generate AI-powered dashboards",
+  title: "Vanguard Financial Engine — Bank Statement Analytics",
+  description: "Institutional black & white financial statement analyzer and cash flow engine.",
 };
 
 export default function RootLayout({
@@ -17,8 +19,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className={`${poppins.className} bg-black text-white antialiased selection:bg-white selection:text-black`}>
+        {children}
+      </body>
     </html>
   );
 }

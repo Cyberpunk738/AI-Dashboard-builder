@@ -10,11 +10,21 @@ import type {
   WidgetType,
 } from "@/types/dashboard";
 
+import type { TransactionCategory } from "@/lib/analytics/category-engine";
+
 interface DashboardState {
   config: DashboardConfig | null;
   activeWidgetId: string | null;
   history: DashboardConfig[];
   historyIndex: number;
+
+  // Analytical Controls
+  excludeTransfers: boolean;
+  categoryOverrides: Record<string, TransactionCategory>;
+
+  toggleExcludeTransfers: () => void;
+  setCategoryOverride: (targetKey: string, category: TransactionCategory) => void;
+  clearCategoryOverrides: () => void;
 
   setConfig: (config: DashboardConfig) => void;
   addWidget: (
@@ -60,6 +70,24 @@ export const useDashboardStore = create<DashboardState>()(
       activeWidgetId: null,
       history: [],
       historyIndex: -1,
+
+      excludeTransfers: false,
+      categoryOverrides: {},
+
+      toggleExcludeTransfers: () =>
+        set((state) => {
+          state.excludeTransfers = !state.excludeTransfers;
+        }),
+
+      setCategoryOverride: (targetKey, category) =>
+        set((state) => {
+          state.categoryOverrides[targetKey] = category;
+        }),
+
+      clearCategoryOverrides: () =>
+        set((state) => {
+          state.categoryOverrides = {};
+        }),
 
       setConfig: (config) =>
         set((state) => {
@@ -181,7 +209,11 @@ export const useDashboardStore = create<DashboardState>()(
     })),
     {
       name: "dashboard-storage",
-      partialize: (state) => ({ config: state.config }),
+      partialize: (state) => ({
+        config: state.config,
+        excludeTransfers: state.excludeTransfers,
+        categoryOverrides: state.categoryOverrides,
+      }),
     }
   )
 );
