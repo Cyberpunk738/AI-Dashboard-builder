@@ -8,10 +8,16 @@ import { useDataStore } from "@/stores/data-store";
 
 export default function Home() {
   const dataset = useDataStore((s) => s.dataset);
+  const clearDataset = useDataStore((s) => s.clearDataset);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
+  const handleReturnHome = () => {
+    clearDataset();
+    setShowUploadModal(false);
+  };
+
   if (dataset) {
-    return <FintechDashboard />;
+    return <FintechDashboard onReturnHome={handleReturnHome} />;
   }
 
   if (showUploadModal) {

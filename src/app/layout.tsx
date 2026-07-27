@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const poppins = Poppins({
-  weight: ["300", "400", "500", "600", "700", "800"],
+const inter = Inter({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Vanguard Financial Engine — Bank Statement Analytics",
-  description: "Institutional black & white financial statement analyzer and cash flow engine.",
+  title: "Stellar.ai — Work Smarter. Move Faster. AI Powers You Up.",
+  description: "Intelligent automation syncs with the tools you love to streamline tasks, boost output, and save time.",
 };
 
 export default function RootLayout({
@@ -19,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${poppins.className} bg-black text-white antialiased selection:bg-white selection:text-black`}>
+    <html lang="en">
+      <body className={`${inter.className} bg-white text-gray-900 antialiased selection:bg-black selection:text-white`}>
         {children}
       </body>
     </html>
