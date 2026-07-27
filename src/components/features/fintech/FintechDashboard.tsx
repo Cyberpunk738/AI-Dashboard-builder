@@ -195,7 +195,7 @@ export function FintechDashboard({ onReturnHome }: FintechDashboardProps) {
             <div className="flex items-center gap-2.5">
               <Star className="h-5 w-5 fill-black text-black group-hover:scale-105 transition-transform" />
               <div>
-                <span className="font-semibold text-sm text-black tracking-tight block leading-none">Vanguard AI</span>
+                <span className="font-semibold text-sm text-black tracking-tight block leading-none">Vanguard AI Platform</span>
                 <span className="text-[9px] text-gray-500 font-mono tracking-wider">STELLAR ENGINE</span>
               </div>
             </div>

@@ -37,10 +37,13 @@ export function UploadPanel({ onBackToLanding }: UploadPanelProps) {
     <div className="min-h-screen bg-white text-gray-900 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-black selection:text-white">
       {/* Brand Header / Back button */}
       <div className="absolute top-6 left-6 right-6 flex items-center justify-between max-w-7xl mx-auto">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 cursor-pointer" onClick={onBackToLanding}>
           <Star className="w-5 h-5 fill-black text-black" />
           <span className="text-lg font-semibold tracking-tight text-black">
-            Stellar.ai
+            Vanguard AI Platform
+          </span>
+          <span className="text-[10px] font-mono font-semibold bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded-full border border-gray-200 hidden sm:inline-block">
+            STELLAR ENGINE
           </span>
         </div>
 
@@ -50,7 +53,7 @@ export function UploadPanel({ onBackToLanding }: UploadPanelProps) {
             className="inline-flex items-center gap-2 text-xs font-semibold text-gray-700 hover:text-black transition-colors border border-gray-200 bg-gray-50 px-4 py-2 rounded-full shadow-xs"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Stellar.ai
+            Back to Home
           </button>
         )}
       </div>
@@ -62,7 +65,7 @@ export function UploadPanel({ onBackToLanding }: UploadPanelProps) {
             100% In-Browser Local Privacy
           </span>
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900">
-            Upload Financial Statement
+            Upload Bank Statement
           </h1>
           <p className="text-sm text-gray-600 max-w-lg mx-auto leading-relaxed">
             Drag and drop your PDF bank statement, CSV, or Excel file for instant AI processing, health scores, and ledger audits.

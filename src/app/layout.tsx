@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Stellar.ai — Work Smarter. Move Faster. AI Powers You Up.",
-  description: "Intelligent automation syncs with the tools you love to streamline tasks, boost output, and save time.",
+  title: "Vanguard AI Platform — Audit-Grade Bank Statement Analytics",
+  description: "Institutional bank statement analytics, 100% client-side machine learning, and audit-grade balance verification.",
 };
 
 export default function RootLayout({
